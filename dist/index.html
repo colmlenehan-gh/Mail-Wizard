@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#b7cee6">
+  <meta name="description" content="Mail Wizard is an open-source email application with a familiar folder pane, message list and reading pane. Connect directly to your mail provider.">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; connect-src 'self' https:; font-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'; worker-src 'self'; manifest-src 'self'">
+  <title>Inbox · Mail Wizard</title>
+  <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#message-list">Skip to messages</a>
+  <header class="application-chrome">
+    <div class="window-titlebar"><img src="./icons/icon.svg" alt="" width="20" height="20"><span id="window-title">Inbox - Mail Wizard</span><div class="window-controls" id="window-controls" hidden><button data-window="minimize" aria-label="Minimize window">_</button><button data-window="maximize" aria-label="Maximize or restore window">□</button><button data-window="close" aria-label="Close window">×</button></div></div>
+    <nav class="menubar" id="menubar" aria-label="Application menu"><button data-menu="file" aria-haspopup="true" aria-expanded="false"><u>F</u>ile</button><button data-menu="edit" aria-haspopup="true" aria-expanded="false"><u>E</u>dit</button><button data-menu="view" aria-haspopup="true" aria-expanded="false"><u>V</u>iew</button><button data-menu="go" aria-haspopup="true" aria-expanded="false"><u>G</u>o</button><button data-menu="message" aria-haspopup="true" aria-expanded="false"><u>M</u>essage</button><button data-menu="tools" aria-haspopup="true" aria-expanded="false"><u>T</u>ools</button><button data-menu="help" aria-haspopup="true" aria-expanded="false"><u>H</u>elp</button></nav>
+    <div class="command-toolbar" role="toolbar" aria-label="Mail commands">
+      <button class="toolbar-button tool-get" id="refresh" aria-label="Refresh mail" title="Get new messages"><span data-icon="inbox"></span><span>Get Mail</span></button>
+      <span class="command-separator"></span>
+      <button class="toolbar-button tool-write" id="compose-button" aria-label="Write a message C" title="Write a new message (C)"><span data-icon="compose"></span><span>Write</span></button>
+      <button class="toolbar-button tool-address" id="address-book-button" title="Open Address Book"><span data-icon="contacts"></span><span>Address Book</span></button>
+      <span class="command-separator"></span>
+      <button class="toolbar-button tool-reply" data-command="reply" title="Reply to the selected message"><span data-icon="reply"></span><span>Reply</span></button>
+      <button class="toolbar-button tool-forward" data-command="forward" title="Forward the selected message"><span data-icon="forward"></span><span>Forward</span></button>
+      <span class="command-separator"></span>
+      <button class="toolbar-button tool-archive" data-command="archive" title="Archive the selected message"><span data-icon="archive"></span><span>Archive</span></button>
+      <button class="toolbar-button tool-delete" data-command="trash" title="Move the selected message to Trash"><span data-icon="trash"></span><span>Delete</span></button>
+      <div class="toolbar-search"><label class="search-box"><span class="icon" data-icon="search"></span><input id="search" type="search" placeholder="Search messages…" aria-label="Search your mail"></label><button class="icon-button" id="settings-button" title="Account Settings" aria-label="Settings" data-icon="settings"></button></div>
+    </div>
+  </header>
+  <div id="application-menu" class="application-menu" role="menu" hidden></div>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar" aria-label="Mailbox navigation">
+      <div class="folder-pane-header">Folders</div>
+      <div class="nav-heading account-tree-heading"><span class="tree-disclosure">▾</span><span data-icon="account"></span><strong id="tree-account-name">Local Folders</strong></div>
+      <nav id="folder-nav" aria-label="Folders"></nav>
+      <div class="nav-heading label-heading">Tags <button class="icon-button" id="new-label" aria-label="Create a collection" title="Create a collection" data-icon="plus"></button></div>
+      <nav id="label-nav" aria-label="Collections"></nav>
+      <div class="sidebar-bottom">
+        <button id="account-button" class="account-button"><span class="avatar account-avatar">Y</span><span><strong id="account-name">Your space</strong><small id="account-status">Sample inbox</small></span><span class="icon" data-icon="settings"></span></button>
+      </div>
+    </aside>
+    <main class="workspace">
+      <header class="topbar">
+        <button class="icon-button mobile-menu" id="mobile-menu" aria-label="Toggle navigation" data-icon="menu"></button>
+        <span class="folder-location" id="folder-location">Local Folders / Inbox</span>
+        <span class="connection-status" id="connection-status"><span></span> Local workspace</span>
+        <button class="icon-button" id="theme-toggle" title="Switch colour theme" aria-label="Switch colour theme" data-icon="moon"></button>
+      </header>
+      <div class="sample-banner" id="sample-banner"><span>Sample account. Messages are stored locally; no real email is sent.</span><button id="connect-banner">Set up an account…</button></div>
+      <div class="mail-workspace">
+        <section class="mail-column" aria-label="Message list">
+          <div class="mail-heading"><div><div class="eyebrow" id="today-label"></div><h1 id="folder-title">Inbox<span class="count-pill" id="folder-count">0</span></h1></div></div>
+          <div class="list-tabs"><span class="filter-caption">Quick Filter:</span><button id="all-tab" class="tab active" aria-pressed="true">All messages</button><button id="focus-tab" class="tab" aria-pressed="false">Unread</button><span id="list-total"></span></div>
+          <div class="message-columns"><button id="select-all-messages" aria-label="Select all visible messages" title="Select all">☐</button><span class="column-star">☆</span><button data-sort="subject">Subject</button><button data-sort="sender">Correspondents</button><button data-sort="date">Date <span>▼</span></button><span class="column-attachment" data-icon="paperclip"></span></div>
+          <div id="bulk-bar" class="bulk-bar" hidden><span id="selection-count"></span><button data-bulk="read" title="Mark read" aria-label="Mark selected messages read" data-icon="mail"></button><button data-bulk="archive" title="Archive" aria-label="Archive selected messages" data-icon="archive"></button><button data-bulk="trash" title="Move to trash" aria-label="Move selected messages to trash" data-icon="trash"></button><button id="clear-selection" aria-label="Clear selection" data-icon="close"></button></div>
+          <div id="message-list" class="message-list" tabindex="-1"></div>
+          <button id="load-more" class="load-more" hidden>Load older messages</button>
+          <div class="list-footer"><span class="icon" data-icon="shield"></span><span>Messages on this device</span><button id="shortcuts-button" aria-label="Keyboard shortcuts">?</button></div>
+        </section>
+        <section class="reader" id="reader" aria-label="Message reader"><div class="empty-reader"><span class="empty-illustration">✳</span><h2>A little breathing room.</h2><p>Choose a message to settle in.</p></div></section>
+      </div>
+    </main>
+  </div>
+  <footer class="application-status"><span id="application-status-text">Ready</span><span id="application-unread">Unread: 0</span><span id="application-total">Total: 0</span><span class="status-grip" aria-hidden="true">◢</span></footer>
+  <div id="toast" class="toast" role="status" hidden><span id="toast-message"></span><button id="toast-action" hidden>Undo</button></div>
+  <dialog id="compose-dialog" class="compose-dialog">
+    <form id="compose-form">
+      <header class="dialog-header"><div><h2 id="compose-title">Write: (no subject)</h2></div><button type="button" id="close-compose" class="icon-button" aria-label="Save draft and close" data-icon="close"></button></header>
+      <div class="compose-fields">
+        <label class="compose-line"><span>To</span><input id="compose-to" placeholder="someone@example.com" autocomplete="off" required><button id="show-cc" type="button" class="text-button">Cc / Bcc</button></label>
+        <div id="cc-fields" hidden><label class="compose-line"><span>Cc</span><input id="compose-cc" autocomplete="off"></label><label class="compose-line"><span>Bcc</span><input id="compose-bcc" autocomplete="off"></label></div>
+        <label class="compose-line subject-line"><span>Subject</span><input id="compose-subject" maxlength="998"></label>
+        <label class="sr-only" for="compose-body">Message</label><textarea id="compose-body"></textarea>
+        <div id="compose-attachments" class="compose-attachments"></div>
+      </div>
+      <footer class="compose-footer"><button type="submit" class="primary-button" id="send-button">Send message <span class="icon" data-icon="send"></span></button><button type="button" id="attach-button" class="icon-button" aria-label="Add attachments" title="Add attachments" data-icon="paperclip"></button><span id="draft-status">Draft saved on this device</span><button id="discard-draft" type="button" class="icon-button" aria-label="Discard draft to trash" title="Discard draft to trash" data-icon="trash"></button></footer>
+    </form>
+  </dialog>
+  <dialog id="settings-dialog" class="settings-dialog">
+    <header class="dialog-header"><div><h2>Account Settings</h2></div><button class="icon-button" data-close="settings-dialog" aria-label="Close settings" data-icon="close"></button></header>
+    <div class="settings-body">
+      <div class="settings-tabs"><button data-settings-tab="account" class="active">Account</button><button data-settings-tab="preferences">Preferences</button><button data-settings-tab="data">Your data</button></div>
+      <section id="settings-account" class="settings-panel">
+        <div class="provider-explanation"><span class="icon" data-icon="shield"></span><div><strong>A direct line to your provider.</strong><p>Mail Wizard is an email client. It connects to your existing account, without a Mail Wizard server. It does not issue email addresses.</p></div></div>
+        <div id="connected-account" hidden></div>
+        <form id="connect-form">
+          <label class="field-label" for="provider-type">Connection</label><select id="provider-type"><option value="jmap">JMAP · web & desktop</option><option value="imap" id="imap-option">IMAP + SMTP · desktop app</option></select>
+          <div id="jmap-fields"><label class="field-label" for="session-url">JMAP session URL</label><input id="session-url" type="url" value="https://api.fastmail.com/jmap/session" required><label class="field-label" for="api-token">Provider API token</label><input id="api-token" type="password" autocomplete="off" placeholder="Your provider's mail API token"><p class="field-help">Fastmail supports direct browser connections. Other JMAP providers must allow CORS. Sending requires submission permissions. Tokens stay in your encrypted local vault.</p></div>
+          <div id="imap-fields" hidden>
+            <label class="field-label" for="imap-preset">Provider preset</label><select id="imap-preset"><option value="custom">Custom provider</option><option value="gmail">Gmail (app password)</option><option value="icloud">iCloud (app-specific password)</option><option value="fastmail">Fastmail (app password)</option></select>
+            <label class="field-label" for="imap-email">Email address</label><input type="email" id="imap-email" autocomplete="email">
+            <label class="field-label" for="imap-password">App password</label><input type="password" id="imap-password" autocomplete="off">
+            <div class="field-grid"><div><label class="field-label" for="imap-host">IMAP host</label><input id="imap-host" placeholder="imap.example.com"></div><div><label class="field-label" for="imap-port">TLS port</label><input id="imap-port" type="number" value="993" min="1" max="65535"></div></div>
+            <div class="field-grid"><div><label class="field-label" for="smtp-host">SMTP host</label><input id="smtp-host" placeholder="smtp.example.com"></div><div><label class="field-label" for="smtp-port">TLS / STARTTLS port</label><select id="smtp-port"><option value="465">465 · TLS</option><option value="587">587 · STARTTLS required</option></select></div></div>
+            <p class="field-help">TLS certificate validation is always on. Providers that require OAuth instead of app passwords, including Microsoft 365, are not supported by this initial desktop connector.</p>
+          </div>
+          <label class="field-label" for="vault-passphrase">Local vault passphrase</label><input id="vault-passphrase" type="password" minlength="12" autocomplete="new-password" placeholder="At least 12 characters"><p class="field-help">Encrypts your credentials, cached mail and drafts on this device. You will need it to unlock the app. It cannot be recovered by Mail Wizard. Local encryption is not end-to-end email encryption.</p>
+          <p id="connect-error" class="form-error" role="alert"></p><button type="submit" class="primary-button" id="connect-submit">Connect account <span aria-hidden="true">↗</span></button>
+        </form>
+      </section>
+      <section id="settings-preferences" class="settings-panel" hidden>
+        <h3>Composition & sending</h3><label class="field-label" for="signature">Email signature</label><textarea id="signature" rows="4" placeholder="Enter a signature (optional)"></textarea><label class="field-label" for="undo-seconds">Undo send window</label><select id="undo-seconds"><option value="8">8 seconds</option><option value="15">15 seconds</option><option value="30">30 seconds</option></select><p class="field-help">Mail is held in this app until the countdown ends. Keep the app open. Once handed to your provider, a message cannot be recalled.</p><button id="save-preferences" class="primary-button">Save preferences</button><hr><button id="install-app" class="secondary-button">Install Mail Wizard</button><p id="install-help" class="field-help">Install from your browser menu when available. On iPhone or iPad, use Share → Add to Home Screen.</p>
+      </section>
+      <section id="settings-data" class="settings-panel" hidden><h3>Local storage & backup</h3><p>Mail and drafts are stored on this device. Connected accounts use an AES-GCM encrypted vault. No analytics, advertising scripts or remote email images.</p><div class="data-actions"><button id="export-backup" class="secondary-button">Export workspace backup</button><button id="import-backup" class="secondary-button">Restore encrypted backup</button><button id="lock-vault" class="secondary-button">Lock workspace</button><button id="demo-reset" class="text-button">Open a fresh sample workspace</button></div><p class="field-help">Backups include account credentials when an account is connected. Encrypted backups keep them encrypted. Existing backups and other devices are not affected by local changes. Sample backups contain fictional data only.</p><hr><a href="./about.html">About Mail Wizard & privacy</a><p class="field-help">Mail Wizard 0.1.0 · MIT licensed</p></section>
+    </div>
+  </dialog>
+  <dialog id="unlock-dialog" class="small-dialog"><form id="unlock-form"><span class="vault-symbol">✳</span><span class="eyebrow">WELCOME BACK</span><h2>Unlock Mail Wizard</h2><p>Unlock your encrypted workspace on this device.</p><label class="field-label" for="unlock-passphrase">Vault passphrase</label><input id="unlock-passphrase" type="password" autocomplete="current-password" required><p class="form-error" id="unlock-error" role="alert"></p><button type="submit" class="primary-button">Unlock workspace</button></form></dialog>
+  <dialog id="prompt-dialog" class="small-dialog"><form id="prompt-form"><h2 id="prompt-title">New Tag</h2><label id="prompt-label" class="field-label" for="prompt-input">Name</label><input id="prompt-input" maxlength="60" required><p id="prompt-help" class="field-help"></p><p class="form-error" id="prompt-error" role="alert"></p><div class="prompt-actions"><button type="button" class="secondary-button" data-close="prompt-dialog">Cancel</button><button type="submit" class="primary-button">Continue</button></div></form></dialog>
+  <dialog id="shortcuts-dialog" class="small-dialog"><header class="dialog-header"><h2>Keyboard Shortcuts</h2><button class="icon-button" data-close="shortcuts-dialog" aria-label="Close keyboard shortcuts" data-icon="close"></button></header><dl class="shortcuts"><div><dt>Write a message</dt><dd><kbd>C</kbd></dd></div><div><dt>Search</dt><dd><kbd>/</kbd></dd></div><div><dt>Next / previous message</dt><dd><kbd>J</kbd> <kbd>K</kbd></dd></div><div><dt>Archive message</dt><dd><kbd>E</kbd></dd></div><div><dt>Star message</dt><dd><kbd>S</kbd></dd></div><div><dt>Send from composer</dt><dd><kbd>Ctrl / ⌘</kbd> <kbd>Enter</kbd></dd></div></dl><p class="field-help">Search: from:nora, subject:"next chapter", is:unread, has:attachment, before:2026-12-01, label:Work. Prefix a term with - to exclude it. Search covers mail cached on this device.</p></dialog>
+  <input id="file-input" type="file" multiple hidden>
+  <input id="backup-input" type="file" accept=".mwbackup,.json,application/json" hidden>
+  <dialog id="contacts-dialog" class="contacts-dialog"><header class="dialog-header"><h2>Address Book</h2><button class="icon-button" data-close="contacts-dialog" aria-label="Close address book" data-icon="close"></button></header><div class="contacts-toolbar"><button class="secondary-button" id="add-contact">New Contact…</button><label class="sr-only" for="contacts-search">Find a contact</label><input id="contacts-search" type="search" placeholder="Find a contact"></div><div class="contact-columns"><span>Name</span><span>Email address</span></div><div id="contact-list"></div><div class="contacts-footer">Local contacts and addresses from your cached messages. Select a contact to write a message.</div></dialog>
+</body>
+</html>

@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /about.html
+Disallow: /index.html
