@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Open your Mail Wizard inbox.">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-4S2kYE8vBKaDLLiUfwyHqBW+uALFLspEb3JRzUH0qr8='; base-uri 'none'; form-action 'none'">
+  <title>Mail Wizard</title>
+  <script>const destination = new URL("./dist/", window.location.href);
+destination.search = window.location.search;
+destination.hash = window.location.hash;
+window.location.replace(destination.href);</script>
+  <noscript><meta http-equiv="refresh" content="0;url=./dist/"></noscript>
+</head>
+<body>
+  <p>Opening Mail Wizard. <a href="./dist/index.html">Open your mailbox</a>.</p>
+</body>
+</html>
