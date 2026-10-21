@@ -1,0 +1,32 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {createRequire} from 'node:module';
+const require=createRequire(import.meta.url);
+const {MailService,validateConfig}=require('../desktop/mail-service.cjs');
+const {simpleParser}=require('mailparser');
+const config={email:'me@example.com',password:'synthetic-app-password',imapHost:'imap.example.com',imapPort:993,smtpHost:'smtp.example.com',smtpPort:587};
+function makeFixture({rejectSMTP=false,appendFails=false,wrongValidity=false}={}) {
+  const calls=[],sent=[];
+  class FakeIMAP {
+    constructor(options){this.options=options;this.usable=true;this.mailbox={exists:1,uidValidity:1n};}
+    on(){}async connect(){calls.push(['connect',this.options]);}async logout(){this.usable=false;}close(){this.usable=false;}
+    async list(){return [{path:'INBOX'},{path:'Archive',specialUse:'\\Archive'},{path:'Sent',specialUse:'\\Sent'},{path:'Trash',specialUse:'\\Trash'}];}
+    async getMailboxLock(path){this.mailbox={exists:1,uidValidity:path==='Archive'?2n:wrongValidity&&calls.some(c=>c[0]==='fetchAll')?99n:1n};calls.push(['lock',path]);return {release:()=>calls.push(['release',path])};}
+    async fetchAll(){calls.push(['fetchAll']);return [{uid:10,size:200,flags:new Set(),envelope:{date:new Date('2026-10-21T12:00:00Z'),from:[{name:'Ada',address:'ada@example.com'}],to:[{address:'me@example.com'}],subject:'Fixture'}}];}
+    async fetchOne(uid,query){if(query.size)return {size:200};return {source:Buffer.from('From: Ada <ada@example.com>\r\nTo: me@example.com\r\nSubject: Fixture\r\nDate: Wed, 21 Oct 2026 12:00:00 +0000\r\nMessage-ID: <fixture@example.com>\r\nMIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary=b\r\n\r\n--b\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\nHello from a synthetic IMAP fixture.\r\n--b\r\nContent-Type: text/plain\r\nContent-Disposition: attachment; filename="note.txt"\r\nContent-Transfer-Encoding: base64\r\n\r\nYWJj\r\n--b--\r\n')};}
+    async messageFlagsAdd(uid,flags){calls.push(['add',uid,flags]);}async messageFlagsRemove(uid,flags){calls.push(['remove',uid,flags]);}
+    async messageMove(uid,destination){calls.push(['move',uid,destination]);return {uidMap:new Map([[uid,99]]),uidValidity:2n};}
+    async append(path,raw){calls.push(['append',path,raw]);if(appendFails)throw new Error('offline');return {uid:99};}
+  }
+  const smtpFactory=options=>({verify:async()=>calls.push(['smtp',options]),sendMail:async mail=>{if(rejectSMTP)throw new Error('SMTP down');sent.push(mail);return {accepted:['to@example.com'],rejected:[]};},close(){}});
+  return {service:new MailService({ImapFlow:FakeIMAP,smtpFactory}),calls,sent};
+}
+test('desktop validates configuration and refuses plaintext SMTP ports',()=>{assert.equal(validateConfig(config).smtpPort,587);assert.throws(()=>validateConfig({...config,smtpPort:25}));assert.throws(()=>validateConfig({...config,imapHost:'imap.example.com/path'}));assert.throws(()=>validateConfig({...config,email:'x\r\nBcc:y@example.com'}));});
+test('desktop requires validated TLS for both transports',async()=>{const f=makeFixture();await f.service.connect(config);const imap=f.calls.find(c=>c[0]==='connect')[1],smtp=f.calls.find(c=>c[0]==='smtp')[1];assert(imap.secure);assert(imap.tls.rejectUnauthorized);assert(smtp.requireTLS);assert(smtp.tls.rejectUnauthorized);assert(smtp.disableFileAccess);assert(smtp.disableUrlAccess);await f.service.disconnect();});
+test('desktop receives MIME message and downloads decoded attachments',async()=>{const f=makeFixture();await f.service.connect(config);const {messages}=await f.service.sync();assert.equal(messages[0].from.email,'ada@example.com');assert(messages[0].body.includes('synthetic IMAP'));assert.equal(messages[0].attachments[0].name,'note.txt');const a=await f.service.attachment({id:10,path:'INBOX',index:0});assert.equal(Buffer.from(a.data,'base64').toString(),'abc');});
+test('desktop checks UIDVALIDITY before modifying a fetched UID',async()=>{const f=makeFixture({wrongValidity:true});await f.service.connect(config);await f.service.sync();await assert.rejects(f.service.update({id:10,path:'INBOX',changes:{read:true}}),/mailbox changed/i);assert(!f.calls.some(c=>c[0]==='add'));});
+test('desktop tracks new UIDs after moves so undo can reach the destination',async()=>{const f=makeFixture();await f.service.connect(config);await f.service.sync();const moved=await f.service.update({id:10,path:'INBOX',changes:{folder:'archive'}});assert.equal(moved.remoteId,99);assert.equal(moved.remotePath,'Archive');assert(!moved.refreshRequired);await f.service.update({id:99,path:'Archive',changes:{read:true}});assert(f.calls.some(c=>c[0]==='add'&&c[1]===99));});
+test('desktop constructs MIME with Bcc only in the SMTP envelope and forces account identity',async()=>{const f=makeFixture();await f.service.connect(config);const result=await f.service.send({from:{email:'spoof@example.com'},to:[{email:'to@example.com'}],cc:[],bcc:[{email:'hidden@example.com'}],subject:'Unicode ✓',body:'A real MIME body from a synthetic test.',attachments:[{name:'a.txt',type:'text/plain',data:'YWJj'}]});const sent=f.sent[0],parsed=await simpleParser(sent.raw);assert.equal(sent.envelope.from,'me@example.com');assert(sent.envelope.to.includes('hidden@example.com'));assert(!parsed.headers.has('bcc'));assert.equal(parsed.subject,'Unicode ✓');assert.equal(parsed.attachments[0].content.toString(),'abc');assert(result.messageId);});
+test('SMTP failure does not append a fake sent copy',async()=>{const f=makeFixture({rejectSMTP:true});await f.service.connect(config);await assert.rejects(f.service.send({to:[{email:'to@example.com'}],cc:[],bcc:[],subject:'x',body:'x',attachments:[]}),/did not confirm/);assert(!f.calls.some(c=>c[0]==='append'));});
+test('sent-copy failure reports SMTP acceptance without retrying the send',async()=>{const f=makeFixture({appendFails:true});await f.service.connect(config);const result=await f.service.send({to:[{email:'to@example.com'}],cc:[],bcc:[],subject:'x',body:'x',attachments:[]});assert(result.warning.includes('SMTP accepted'));assert.equal(f.sent.length,1);});
+test('desktop rejects arbitrary attachment paths and unknown mailbox UIDs',async()=>{const f=makeFixture();await f.service.connect(config);await assert.rejects(f.service.send({to:[{email:'to@example.com'}],subject:'x',body:'x',attachments:[{path:'/etc/passwd'}]}),/attachment/);await assert.rejects(f.service.update({id:123,path:'INBOX',changes:{read:true}}),/Sync this message/);});

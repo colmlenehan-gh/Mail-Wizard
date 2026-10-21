@@ -1,0 +1,16 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {addresses,escapeHTML,folderMatch,matchesSearch,visibleMessages,groupThreads,htmlToText,safeHTTPS,validateSnapshot,uid} from '../dist/modules/core.js';
+import {sampleState} from '../dist/modules/demo.js';
+const m=sampleState().messages.find(m=>m.id==='m2');
+test('recipient parsing accepts names, comma and semicolon lists',()=>{assert.deepEqual(addresses('Ada <ada@example.com>; other@example.org'),[{name:'Ada',email:'ada@example.com'},{name:'',email:'other@example.org'}]);});
+test('recipient parsing rejects header injection and malformed addresses',()=>{assert.throws(()=>addresses('a@example.com\r\nBcc: x@example.com'));assert.throws(()=>addresses('x'));assert.deepEqual(addresses(''),[]);});
+test('search combines structured fields, quoted phrases and exclusions',()=>{assert(matchesSearch(m,'from:nora subject:"first chapter" has:attachment -is:read'));assert(!matchesSearch(m,'from:ada'));assert(matchesSearch(m,'label:work'));assert(!matchesSearch(m,'-has:attachment'));});
+test('date search rejects invalid dates and applies strict before/after',()=>{const d={...m,date:'2026-10-01T12:00:00Z'};assert(matchesSearch(d,'after:2026-09-30 before:2026-10-02'));assert(!matchesSearch(d,'before:invalid'));});
+test('snooze is local and excludes inbox until expiry',()=>{const d={...m,snoozeUntil:2000};assert(!folderMatch(d,'inbox',1000));assert(folderMatch(d,'snoozed',1000));assert(folderMatch(d,'inbox',3000));assert(!folderMatch({...d,folder:'trash'},'snoozed',1000));});
+test('search across folders excludes trash unless explicitly requested',()=>{const a={...m,id:'a',folder:'trash'};assert.equal(visibleMessages([a],{query:'nora'}).length,0);assert.equal(visibleMessages([a],{query:'in:trash'}).length,1);});
+test('thread grouping preserves unread and starred members',()=>{const g=groupThreads([{...m,read:true,starred:false},{...m,id:'second',read:false,starred:true}]);assert.equal(g.length,1);assert.equal(g[0].members.length,2);assert(!g[0].read);assert(g[0].starred);});
+test('HTML is reduced to text without resource loading or script execution',()=>{assert.equal(htmlToText('<head><script>alert(1)</script></head><p>Hello &amp; goodbye</p><img src="https://tracker.invalid/x"><style>x</style>'),'Hello & goodbye');assert.equal(escapeHTML('<script>"&'), '&lt;script&gt;&quot;&amp;');});
+test('provider URLs require HTTPS and reject embedded secrets',()=>{assert.equal(safeHTTPS('https://api.example.com/jmap').hostname,'api.example.com');assert.throws(()=>safeHTTPS('http://example.com'));assert.throws(()=>safeHTTPS('https://user:pass@example.com'));assert.throws(()=>safeHTTPS('javascript:alert(1)'));});
+test('backup validation fails closed on malformed messages',()=>{assert.equal(validateSnapshot(sampleState()).schema,1);assert.throws(()=>validateSnapshot({schema:1,messages:[{}]}));assert.throws(()=>validateSnapshot({schema:999,messages:[]}));});
+test('generated identifiers are unique UUIDs',()=>{const ids=new Set(Array.from({length:100},uid));assert.equal(ids.size,100);assert([...ids].every(i=>/^[0-9a-f-]{36}$/.test(i)));});
